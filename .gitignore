@@ -1,0 +1,4 @@
+nubank_django.egg-info
+.pytest_cache
+.cache
+__pycache__
