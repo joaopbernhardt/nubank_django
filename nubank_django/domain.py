@@ -102,17 +102,6 @@ def full_load_card_statements():
     persist_card_statements(parsed)
 
 
-def get_balance_from_statements() -> Decimal:
-    # TODO: double-check this logic. Currently not matching the amount seen in the app. Maybe due to investment yields?
-    all_statements = AccountStatement.objects.all()
-    debits = all_statements.filter(gql_typename__in=DEBIT_STATEMENT_TYPES)
-    credits = all_statements.filter(gql_typename__in=CREDIT_STATEMENT_TYPES)
-
-    return sum(credits.values_list("amount", flat=True)) - sum(
-        debits.values_list("amount", flat=True)
-    )
-
-
 def get_raw_account_statements(cache_policy: str = "push-pull") -> List[dict]:
     logger.info(
         "Starting to get raw nuconta statement.", extra={cache_policy: cache_policy}

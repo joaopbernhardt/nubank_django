@@ -14,11 +14,14 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.admin",
     "django.contrib.auth",
+    "django.contrib.sessions",
+    "django.contrib.messages",
     "nubank_django",
     "tests",
 ]
 
-MIDDLEWARE = []
+MIDDLEWARE = ["django.contrib.messages.middleware.MessageMiddleware"]
+ROOT_URLCONF = "urls"
 
 TEMPLATES = [
     {

@@ -3,8 +3,10 @@ from django_object_actions import DjangoObjectActions
 from rangefilter.filters import DateRangeFilter
 
 from nubank_django.domain import full_load_card_statements, full_load_nuconta_statements
+from nubank_django.models import CardStatement, AccountStatement
 
 
+@admin.register(CardStatement)
 class CardStatementAdmin(DjangoObjectActions, admin.ModelAdmin):
     list_display = ("description", "title", "time", "amount")
     search_fields = ("amount", "description", "title")
@@ -33,7 +35,6 @@ class CardStatementAdmin(DjangoObjectActions, admin.ModelAdmin):
             super()
             .get_queryset(request)
             .order_by("-time")
-            .prefetch_related("card_categorizations__budget_allocation")
         )
 
     def get_readonly_fields(self, request, obj=None):
@@ -44,6 +45,7 @@ class CardStatementAdmin(DjangoObjectActions, admin.ModelAdmin):
         full_load_card_statements()
 
 
+@admin.register(AccountStatement)
 class AccountStatementAdmin(DjangoObjectActions, admin.ModelAdmin):
     list_display = (
         "detail",

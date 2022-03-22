@@ -2,13 +2,14 @@ import pytest
 
 from nubank_django.domain import (
     parse_account_statements,
+    persist_card_statements,
     persist_parsed_account_statements,
 )
 from nubank_django.models import AccountStatement
 
 
 @pytest.fixture
-def parsed_statements(nubank):
+def parsed_account_statements(nubank):
     return parse_account_statements(nubank.get_account_statements())
 
 
@@ -18,9 +19,16 @@ def test_can_import_statement(nubank):
     assert type(parsed[0]) == AccountStatement
 
 
-def test_can_persist_parsed_account_statements(
-    parsed_statements, db_queries
-):
-    persist_parsed_account_statements(parsed_statements)
+def test_can_persist_parsed_account_statements(parsed_account_statements, db_queries):
+    persist_parsed_account_statements(parsed_account_statements)
     assert len(db_queries) == 3
-    assert AccountStatement.objects.count() == len(parsed_statements)
+    assert AccountStatement.objects.count() == len(parsed_account_statements)
+
+
+def test_persisting_account_statements_avoids_duplication(parsed_account_statements):
+    persist_parsed_account_statements(parsed_account_statements)
+    count_after_first_run = AccountStatement.objects.count()
+
+    persist_parsed_account_statements(parsed_account_statements)
+    count_after_second_run = AccountStatement.objects.count()
+    assert count_after_first_run == count_after_second_run
