@@ -12,17 +12,10 @@ logger = logging.getLogger(__name__)
 NUBANK_CACHE_TTL = 60 * 60 * 2  # 2 hour
 
 
-def _is_test():
-    return bool(os.getenv("PYTEST_CURRENT_TEST"))
-
-
 def _get_http_client():
-    # TODO: Ideally we'd use dependency injection
-    # instead of this to choose whether to mock or not.
-    if _is_test():
-        return MockHttpClient()
-    else:
-        return HttpClient()
+    """This method makes it easier for mocking during tests."""
+    # pragma: nocover
+    return HttpClient()
 
 
 def parse_reserve_events(transaction: dict) -> dict:
@@ -74,25 +67,22 @@ class NubankClient(Nubank):
 
         if "push" in cache_policy and not from_cache:
             logger.info(f"Setting cache for '{ACCOUNT_FEED_CACHE_KEY}'.")
-            cache.set(
-                ACCOUNT_FEED_CACHE_KEY, json.dumps(raw_account_feed), NUBANK_CACHE_TTL
-            )
+            cache.set(ACCOUNT_FEED_CACHE_KEY, json.dumps(raw_account_feed), NUBANK_CACHE_TTL)
 
         transactions_with_pix = map(parse_pix_transaction, raw_account_feed)
         transactions_without_generic_feed_events = filter(
             lambda t: t["__typename"] != "GenericFeedEvent", transactions_with_pix
         )
-        transactions_with_reserve_events = map(
-            parse_reserve_events, transactions_without_generic_feed_events
-        )
+        transactions_with_reserve_events = map(parse_reserve_events, transactions_without_generic_feed_events)
         return list(transactions_with_reserve_events)
 
 
 def get_authed_nu_client():
-    nu = NubankClient(_get_http_client())
-    if _is_test():
+    http_client = _get_http_client()
+    nu = NubankClient(http_client)
+    if isinstance(http_client, MockHttpClient):
         nu.authenticate_with_cert("fake-cpf", "fake-password", "fake-cert_path")
-    else:
+    else:  # pragma: nocover
         cpf, password, cert_path = _get_credentials()
         nu.authenticate_with_cert(cpf, password, cert_path)
     return nu
@@ -100,16 +90,12 @@ def get_authed_nu_client():
 
 def _get_credentials() -> Tuple[str]:
     cred_env_vars = ("NUBANK_CPF", "NUBANK_PASSWORD", "NUBANK_CERT_PATH")
-    cpf, password, cert_path = tuple(
-        os.getenv(env_var, None) for env_var in cred_env_vars
-    )
+    cpf, password, cert_path = tuple(os.getenv(env_var, None) for env_var in cred_env_vars)
 
     if not all([cpf, password, cert_path]):
         raise ValueError("Could not find NUBANK credentials in environment.")
 
     if not os.path.exists(cert_path):
-        raise ValueError(
-            f"Could not find certificate via environment variable on '{cert_path}'."
-        )
+        raise ValueError(f"Could not find certificate via environment variable on '{cert_path}'.")
 
     return cpf, password, cert_path

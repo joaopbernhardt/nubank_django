@@ -1,4 +1,7 @@
+from unittest import mock
+
 import pytest
+from pynubank import MockHttpClient
 
 from nubank_django import domain
 from nubank_django.models import CardStatement
@@ -15,11 +18,13 @@ def test_can_import_card_statements(nubank):
     assert type(parsed[0]) == CardStatement
 
 
+@mock.patch("nubank_django.nu._get_http_client", mock.MagicMock(return_value=MockHttpClient()))
 def test_can_get_raw_card_statements_from_source():
     raw_card_statements = domain.get_raw_card_statements(cache_policy="ignore")
     assert type(raw_card_statements) == list
 
 
+@mock.patch("nubank_django.nu._get_http_client", mock.MagicMock(return_value=MockHttpClient()))
 def test_can_persist_card_statements():
     raw_card_statements = domain.get_raw_card_statements(cache_policy="ignore")
     parsed_card_statements = domain.parse_card_statements(raw_card_statements)

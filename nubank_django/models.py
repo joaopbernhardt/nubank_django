@@ -28,9 +28,7 @@ class CardStatement(models.Model):
 
     account = models.UUIDField(null=True, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    amount_without_iof = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
-    )
+    amount_without_iof = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     category = models.CharField(max_length=128)
     description = models.TextField()
     details = models.JSONField()
@@ -78,40 +76,32 @@ class AccountStatement(models.Model):
     detail = models.TextField()
     post_date = models.DateField()
     title = models.CharField(max_length=128)
-    gql_typename = models.CharField(
-        "Statement Type", choices=ACCOUNT_STATEMENT_TYPE, max_length=64
-    )
+    gql_typename = models.CharField("Statement Type", choices=ACCOUNT_STATEMENT_TYPE, max_length=64)
 
     def __str__(self):
         return f"({self.post_date}) {self.detail}: R$ {self.amount}"
 
     @property
-    def has_destination(self):
+    def is_transfer_out(self):
         return "TransferOutEvent" in self.gql_typename
 
     @property
-    def has_origin(self):
+    def is_transfer_in(self):
         return self.gql_typename == "TransferInEvent"
 
     @property
     def account_name(self) -> Optional[str]:
-        if self.has_destination:
+        if self.is_transfer_out:
             return self.destination_account
-        elif self.has_origin:
+        elif self.is_transfer_in:
             return self.origin_account
 
     def clean(self):
         if self.destination_account and self.origin_account:
-            raise ValidationError(
-                "Destination and Origin accounts are mutually exclusive."
-            )
+            raise ValidationError("Destination and Origin accounts are mutually exclusive.")
 
-        if self.has_origin and not getattr(self, "origin_account", None):
-            raise ValidationError(
-                "TransferInEvent must have an associated origin_account."
-            )
+        if self.is_transfer_in and not getattr(self, "origin_account", None):
+            raise ValidationError("TransferInEvent must have an associated origin_account.")
 
-        if self.has_destination and not getattr(self, "destination_account", None):
-            raise ValidationError(
-                "*TransferOutEvent must have an associated destination_account."
-            )
+        if self.is_transfer_out and not getattr(self, "destination_account", None):
+            raise ValidationError("*TransferOutEvent must have an associated destination_account.")

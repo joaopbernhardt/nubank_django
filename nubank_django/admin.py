@@ -31,11 +31,7 @@ class CardStatementAdmin(DjangoObjectActions, admin.ModelAdmin):
         return False
 
     def get_queryset(self, request):
-        return (
-            super()
-            .get_queryset(request)
-            .order_by("-time")
-        )
+        return super().get_queryset(request).order_by("-time")
 
     def get_readonly_fields(self, request, obj=None):
         return [f.name for f in self.model._meta.fields]

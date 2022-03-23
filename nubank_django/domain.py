@@ -20,9 +20,7 @@ NUBANK_CACHE_TTL = 60 * 60 * 2  # 2 hours
 
 
 def persist_card_statements(parsed_card_statements: List[CardStatement]):
-    existing_card_statements_ids = CardStatement.objects.values_list(
-        "nubank_id", flat=True
-    )
+    existing_card_statements_ids = CardStatement.objects.values_list("nubank_id", flat=True)
     card_statements_to_create = []
     for statement in parsed_card_statements:
         if statement.nubank_id in existing_card_statements_ids:
@@ -45,10 +43,7 @@ def parse_card_statements(raw_card_statements: List[dict]) -> List[CardStatement
                 nubank_id=raw_card_statement["id"],
                 account=raw_card_statement.get("account"),
                 amount=amount_to_decimal(raw_card_statement["amount"] / 100),
-                amount_without_iof=amount_to_decimal(
-                    raw_card_statement.get("amount_without_iof", 0) / 100
-                )
-                or None,
+                amount_without_iof=amount_to_decimal(raw_card_statement.get("amount_without_iof", 0) / 100) or None,
                 category=raw_card_statement["category"],
                 description=raw_card_statement["description"],
                 details=raw_card_statement["details"],
@@ -62,9 +57,7 @@ def parse_card_statements(raw_card_statements: List[dict]) -> List[CardStatement
             parsed_card_statement.clean()
             parsed_card_statements.append(parsed_card_statement)
         except Exception:
-            logger.exception(
-                "Could not parse statement.", extra={"statement": raw_card_statement}
-            )
+            logger.exception("Could not parse statement.", extra={"statement": raw_card_statement})
 
     logger.info(
         "Parsed card statements.",
@@ -74,9 +67,7 @@ def parse_card_statements(raw_card_statements: List[dict]) -> List[CardStatement
 
 
 def get_raw_card_statements(cache_policy: str = "push-pull") -> List[dict]:
-    logger.info(
-        "Starting to get raw card statement.", extra={cache_policy: cache_policy}
-    )
+    logger.info("Starting to get raw card statement.", extra={cache_policy: cache_policy})
 
     CARD_STATEMENTS_CACHE_KEY = "card_statements.json"
 
@@ -90,9 +81,7 @@ def get_raw_card_statements(cache_policy: str = "push-pull") -> List[dict]:
 
     if "push" in cache_policy:
         logger.info(f"Setting cache for '{CARD_STATEMENTS_CACHE_KEY}'.")
-        cache.set(
-            CARD_STATEMENTS_CACHE_KEY, json.dumps(raw_statements), NUBANK_CACHE_TTL
-        )
+        cache.set(CARD_STATEMENTS_CACHE_KEY, json.dumps(raw_statements), NUBANK_CACHE_TTL)
     return raw_statements
 
 
@@ -103,16 +92,12 @@ def full_load_card_statements():
 
 
 def get_raw_account_statements(cache_policy: str = "push-pull") -> List[dict]:
-    logger.info(
-        "Starting to get raw nuconta statement.", extra={cache_policy: cache_policy}
-    )
+    logger.info("Starting to get raw nuconta statement.", extra={cache_policy: cache_policy})
 
     nu = get_authed_nu_client()
     raw_statements = nu.get_account_feed_with_pix_mapping()
 
-    logger.info(
-        "Returning nuconta statements", extra={"statements_count": len(raw_statements)}
-    )
+    logger.info("Returning nuconta statements", extra={"statements_count": len(raw_statements)})
     return raw_statements
 
 
@@ -123,9 +108,7 @@ def persist_parsed_account_statements(
         "Started persisting statements.",
         extra={"parsed_statements_count": len(parsed_statements)},
     )
-    existing_statement_ids = AccountStatement.objects.values_list(
-        "nubank_id", flat=True
-    )
+    existing_statement_ids = AccountStatement.objects.values_list("nubank_id", flat=True)
 
     statements_to_create = []
     statements_already_existing = []
@@ -177,27 +160,19 @@ def parse_account_statements(raw_statements: List[dict]) -> List[AccountStatemen
                 gql_typename=raw_statement["__typename"],
             )
 
-            if parsed_statement.has_destination:
-                parsed_statement.destination_account = _account_name_from_statement(
-                    raw_statement
-                )
-            elif parsed_statement.has_origin:
-                parsed_statement.origin_account = _account_name_from_statement(
-                    raw_statement
-                )
+            if parsed_statement.is_transfer_out:
+                parsed_statement.destination_account = _account_name_from_statement(raw_statement)
+            elif parsed_statement.is_transfer_in:
+                parsed_statement.origin_account = _account_name_from_statement(raw_statement)
 
             # uniqueness is checked before persistence attempts, not here.
             parsed_statement.clean_fields()
             parsed_statement.clean()
             parsed_statements.append(parsed_statement)
         except Exception:
-            logger.exception(
-                "Could not parse statement.", extra={"statement": raw_statement}
-            )
+            logger.exception("Could not parse statement.", extra={"statement": raw_statement})
 
-    logger.info(
-        "Parsed statements.", extra={"parsed_statements_count": len(parsed_statements)}
-    )
+    logger.info("Parsed statements.", extra={"parsed_statements_count": len(parsed_statements)})
     return parsed_statements
 
 
